@@ -1,1 +1,58 @@
+name: Auto Scrape Piano Sheets
 
+on:
+  # Manuel tetikleme
+  workflow_dispatch:
+  
+  # Her gün saat 03:00'te otomatik çalış (UTC)
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install Dependencies
+        run: |
+          pip install selenium beautifulsoup4 requests
+          
+          # Chrome & ChromeDriver kurulumu
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+      
+      - name: Run Scraper
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scraper.py
+      
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add sheets/
+          
+          # Değişiklik varsa commit yap
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update: Added new piano sheets [$(date +'%Y-%m-%d %H:%M')]"
+            git push
+          fi
+      
+      - name: Summary
+        run: |
+          echo "✅ Scraping completed!"
+          echo "📁 Files saved to sheets/ directory"
+          echo "🔄 Changes pushed to GitHub"
