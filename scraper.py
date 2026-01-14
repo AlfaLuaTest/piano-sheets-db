@@ -1,336 +1,254 @@
-#!/usr/bin/env python3
-"""
-PlayPianoSheets Auto Scraper for GitHub Actions
-Automatically scrapes Hard difficulty piano sheets and saves to GitHub
-"""
-
 from selenium import webdriver
-from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
 import json
 import time
 import os
 import re
-from datetime import datetime
 
 class PianoSheetsScraper:
     def __init__(self):
-        # Setup headless Chrome
+        print("🚀 Initializing Chrome WebDriver...")
         chrome_options = Options()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
         
-        self.driver = webdriver.Chrome(options=chrome_options)
-        self.wait = WebDriverWait(self.driver, 10)
-        self.base_url = "https://playpianosheets.com"
+        service = Service(ChromeDriverManager().install())
+        self.driver = webdriver.Chrome(service=service, options=chrome_options)
         
-        # Load existing songs to avoid re-scraping
-        self.existing_songs = self.load_existing_songs()
-        
-    def load_existing_songs(self):
-        """Load already scraped song IDs from sheets directory"""
-        existing = set()
-        
-        if os.path.exists('sheets'):
-            for root, dirs, files in os.walk('sheets'):
-                for file in files:
-                    if file.endswith('.json'):
-                        try:
-                            with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
-                                data = json.load(f)
-                                existing.add(data.get('id'))
-                        except:
-                            pass
-        
-        print(f"📚 Found {len(existing)} existing songs in database")
-        return existing
+        self.base_url = "https://www.onlinepianist.com"
+        self.sheets_data = []
+        print("✅ WebDriver initialized successfully!")
     
-    def get_all_song_links(self):
-        """Collect all song URLs from the site"""
-        print("\n🔍 Collecting song URLs...")
-        all_songs = []
-        page = 1
+    def get_all_songs(self):
+        """Tüm şarkıları topla"""
+        print("\n📋 Fetching all songs...")
+        url = f"{self.base_url}/songs"
+        self.driver.get(url)
         
-        while True:
-            url = f"{self.base_url}/category/all" + (f"/page/{page}" if page > 1 else "")
+        # Sayfanın yüklenmesini bekle
+        time.sleep(3)
+        
+        # Scroll yaparak lazy loading'i tetikle
+        last_height = self.driver.execute_script("return document.body.scrollHeight")
+        scroll_count = 0
+        max_scrolls = 20  # Maksimum scroll sayısı
+        
+        while scroll_count < max_scrolls:
+            # Sayfanın sonuna scroll yap
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
             
-            try:
-                self.driver.get(url)
-                time.sleep(2)
-                
-                # Find all song links
-                links = self.driver.find_elements(By.CSS_SELECTOR, 'a[href*="/sheets/"]')
-                
-                if not links:
-                    break
-                
-                page_songs = []
-                for link in links:
-                    try:
-                        href = link.get_attribute('href')
-                        
-                        # Skip non-song links
-                        if not href or 'category' in href or 'page' in href:
-                            continue
-                        
-                        song_id = href.split('/')[-1]
-                        
-                        # Skip if already scraped
-                        if song_id in self.existing_songs:
-                            continue
-                        
-                        # Extract title and artist
-                        try:
-                            title = link.find_element(By.CSS_SELECTOR, 'h3, .title').text.strip()
-                        except:
-                            title = "Unknown"
-                        
-                        try:
-                            artist = link.find_element(By.CSS_SELECTOR, 'p, .artist').text.strip()
-                        except:
-                            artist = "Unknown"
-                        
-                        song_data = {
-                            'id': song_id,
-                            'url': href,
-                            'title': title,
-                            'artist': artist
-                        }
-                        
-                        # Avoid duplicates
-                        if not any(s['id'] == song_id for s in all_songs):
-                            all_songs.append(song_data)
-                            page_songs.append(song_data)
-                    
-                    except Exception as e:
-                        continue
-                
-                print(f"  Page {page}: Found {len(page_songs)} new songs (Total new: {len(all_songs)})")
-                
-                # Check for next page
-                try:
-                    next_btn = self.driver.find_element(By.CSS_SELECTOR, 'a[rel="next"]')
-                    page += 1
-                except:
-                    break
-                    
-            except Exception as e:
-                print(f"  ❌ Error on page {page}: {e}")
+            # Yeni yüksekliği kontrol et
+            new_height = self.driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
                 break
+            
+            last_height = new_height
+            scroll_count += 1
+            print(f"  Scrolling... ({scroll_count}/{max_scrolls})")
         
-        print(f"\n✅ Total new songs to scrape: {len(all_songs)}")
-        return all_songs
-    
-    def click_hard_button(self):
-        """Click the Hard difficulty button"""
-        try:
-            # Wait for buttons to load
-            time.sleep(1)
-            
-            # Find Hard button by text
-            buttons = self.driver.find_elements(By.TAG_NAME, 'button')
-            
-            for button in buttons:
-                if 'hard' in button.text.lower():
-                    button.click()
-                    time.sleep(1)
-                    print("    ✓ Clicked Hard button")
-                    return True
-            
-            print("    ⚠️  Hard button not found, using default")
-            return False
-            
-        except Exception as e:
-            print(f"    ⚠️  Could not click Hard button: {e}")
-            return False
-    
-    def extract_notes(self):
-        """Extract notes from the sheet area"""
-        try:
-            # Try multiple selectors
-            selectors = [
-                'div.space-y-4',
-                'div[class*="space-y"]',
-                'pre',
-                'code',
-                '.sheet-content'
-            ]
-            
-            for selector in selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    
-                    for element in elements:
-                        text = element.text
-                        
-                        # Check if it contains piano notation
-                        if '[' in text and ']' in text and len(text) > 50:
-                            # Clean the notes
-                            notes = self.clean_notes(text)
-                            if notes:
-                                return notes
+        # Sayfanın HTML'ini al
+        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        
+        # Şarkı linklerini bul
+        song_links = soup.find_all('a', href=re.compile(r'/songs/[^/]+$'))
+        
+        songs = []
+        for link in song_links:
+            song_url = link.get('href')
+            if song_url and song_url not in [s['url'] for s in songs]:
+                # Tam URL oluştur
+                if not song_url.startswith('http'):
+                    song_url = self.base_url + song_url
                 
-                except:
-                    continue
-            
-            return None
-            
-        except Exception as e:
-            print(f"    ❌ Error extracting notes: {e}")
-            return None
+                # Şarkı adını link text'inden veya URL'den al
+                song_name = link.get_text(strip=True)
+                if not song_name:
+                    song_name = song_url.split('/')[-1].replace('-', ' ').title()
+                
+                songs.append({
+                    'name': song_name,
+                    'url': song_url
+                })
+        
+        print(f"✅ Found {len(songs)} songs")
+        return songs
     
-    def clean_notes(self, text):
-        """Clean and format notes"""
+    def scrape_song_details(self, song_url):
+        """Bir şarkının detaylarını çek"""
         try:
-            # Remove instructions and metadata
-            text = re.sub(r'TRANS.*$', '', text, flags=re.MULTILINE | re.DOTALL)
-            text = re.sub(r'Speed:.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'Auto Play.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'How to Play.*$', '', text, flags=re.MULTILINE | re.DOTALL)
-            text = re.sub(r'Sustain.*$', '', text, flags=re.MULTILINE)
-            text = re.sub(r'Reset.*$', '', text, flags=re.MULTILINE)
+            print(f"\n🎵 Scraping: {song_url}")
+            self.driver.get(song_url)
+            time.sleep(2)
             
-            # Remove empty lines and trim
-            lines = [line.strip() for line in text.split('\n') if line.strip()]
-            text = '\n'.join(lines)
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             
-            # Verify it's valid notation
-            if '[' in text and ']' in text and len(text) > 20:
-                return text
+            # Şarkı adı
+            title_elem = soup.find('h1')
+            title = title_elem.get_text(strip=True) if title_elem else "Unknown"
             
-            return None
+            # Artist
+            artist_elem = soup.find('h2') or soup.find('span', class_='artist')
+            artist = artist_elem.get_text(strip=True) if artist_elem else "Unknown"
             
-        except:
-            return None
-    
-    def scrape_song(self, song):
-        """Scrape a single song"""
-        try:
-            print(f"  🎵 {song['title']} by {song['artist']}")
+            # Zorluk seviyesi
+            difficulty_elem = soup.find('span', class_='difficulty') or soup.find('div', class_='difficulty')
+            difficulty = difficulty_elem.get_text(strip=True) if difficulty_elem else "Unknown"
             
-            # Navigate to song page
-            self.driver.get(song['url'])
-            time.sleep(3)
+            # Thumbnail/Cover image
+            img_elem = soup.find('img', class_='song-cover') or soup.find('img', src=re.compile(r'cover|thumb'))
+            thumbnail = img_elem.get('src') if img_elem else None
+            if thumbnail and not thumbnail.startswith('http'):
+                thumbnail = self.base_url + thumbnail
             
-            # Click Hard button
-            self.click_hard_button()
+            # Rating
+            rating_elem = soup.find('span', class_='rating') or soup.find('div', class_='rating')
+            rating = rating_elem.get_text(strip=True) if rating_elem else None
             
-            # Extract notes
-            notes = self.extract_notes()
+            # Views/Plays
+            views_elem = soup.find('span', class_='views') or soup.find('span', class_='plays')
+            views = views_elem.get_text(strip=True) if views_elem else None
             
-            if not notes:
-                print("    ❌ No notes found")
-                return False
-            
-            # Create song data
             song_data = {
-                'id': song['id'],
-                'title': song['title'],
-                'artist': song['artist'],
-                'url': song['url'],
-                'difficulty': 'hard',
-                'notes': notes,
-                'updated_at': datetime.utcnow().isoformat() + 'Z'
+                'title': title,
+                'artist': artist,
+                'url': song_url,
+                'difficulty': difficulty,
+                'thumbnail': thumbnail,
+                'rating': rating,
+                'views': views,
+                'scraped_at': time.strftime('%Y-%m-%d %H:%M:%S')
             }
             
-            # Save to file
-            success = self.save_song(song_data)
-            
-            if success:
-                print(f"    ✅ Saved ({len(notes)} chars)")
-                return True
-            else:
-                print("    ❌ Save failed")
-                return False
-                
-        except Exception as e:
-            print(f"    ❌ Error: {e}")
-            return False
-    
-    def save_song(self, song_data):
-        """Save song to JSON file"""
-        try:
-            # Clean artist and title for filename
-            safe_artist = re.sub(r'[^\w\s-]', '', song_data['artist'])
-            safe_artist = safe_artist.strip().replace(' ', '_')
-            if not safe_artist:
-                safe_artist = 'Unknown'
-            
-            safe_title = re.sub(r'[^\w\s-]', '', song_data['title'])
-            safe_title = safe_title.strip().replace(' ', '_')
-            if not safe_title:
-                safe_title = song_data['id']
-            
-            # Create directory structure
-            artist_dir = os.path.join('sheets', safe_artist)
-            os.makedirs(artist_dir, exist_ok=True)
-            
-            # Save file
-            file_path = os.path.join(artist_dir, f"{safe_title}.json")
-            
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(song_data, f, indent=2, ensure_ascii=False)
-            
-            return True
+            print(f"  ✅ {title} by {artist}")
+            return song_data
             
         except Exception as e:
-            print(f"    ❌ Save error: {e}")
-            return False
+            print(f"  ❌ Error scraping {song_url}: {str(e)}")
+            return None
     
-    def run(self):
-        """Main scraping process"""
-        print("=" * 60)
-        print("🎹 PlayPianoSheets Auto Scraper")
-        print("=" * 60)
+    def save_data(self, filename='piano_sheets.json'):
+        """Verileri JSON dosyasına kaydet"""
+        print(f"\n💾 Saving data to {filename}...")
         
+        # Varolan veriyi yükle
+        existing_data = []
+        if os.path.exists(filename):
+            try:
+                with open(filename, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            except:
+                pass
+        
+        # Yeni veriyi ekle (중복 kontrol)
+        existing_urls = [item['url'] for item in existing_data]
+        new_count = 0
+        
+        for sheet in self.sheets_data:
+            if sheet['url'] not in existing_urls:
+                existing_data.append(sheet)
+                new_count += 1
+        
+        # Kaydet
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(existing_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"✅ Data saved! Total: {len(existing_data)} songs ({new_count} new)")
+        
+        # README güncelle
+        self.update_readme(len(existing_data))
+    
+    def update_readme(self, total_songs):
+        """README.md dosyasını güncelle"""
+        print("\n📝 Updating README.md...")
+        
+        readme_content = f"""# 🎹 Piano Sheets Database
+
+Automatically scraped piano sheet music database from OnlinePianist.
+
+## 📊 Statistics
+
+- **Total Songs**: {total_songs}
+- **Last Updated**: {time.strftime('%Y-%m-%d %H:%M:%S UTC')}
+- **Source**: [OnlinePianist](https://www.onlinepianist.com)
+
+## 📁 Data Structure
+```json
+{{
+  "title": "Song Title",
+  "artist": "Artist Name",
+  "url": "https://www.onlinepianist.com/songs/...",
+  "difficulty": "Easy/Medium/Hard",
+  "thumbnail": "https://...",
+  "rating": "4.5/5",
+  "views": "1.2M",
+  "scraped_at": "2024-01-15 12:00:00"
+}}
+```
+
+## 🔄 Auto-Update
+
+This database is automatically updated every 6 hours via GitHub Actions.
+
+## 📜 License
+
+Data scraped for educational purposes only.
+"""
+        
+        with open('README.md', 'w', encoding='utf-8') as f:
+            f.write(readme_content)
+        
+        print("✅ README.md updated!")
+    
+    def run(self, max_songs=50):
+        """Ana scraping işlemini çalıştır"""
         try:
-            # Get all new songs
-            songs = self.get_all_song_links()
+            print("\n" + "="*50)
+            print("🎹 PIANO SHEETS SCRAPER STARTED")
+            print("="*50)
             
-            if not songs:
-                print("\n✅ No new songs to scrape. Database is up to date!")
-                return
+            # Tüm şarkıları al
+            songs = self.get_all_songs()
             
-            # Scrape each song
-            print(f"\n📝 Starting to scrape {len(songs)} songs...\n")
+            # İlk N şarkıyı scrape et
+            songs_to_scrape = songs[:max_songs]
+            print(f"\n🎯 Scraping first {len(songs_to_scrape)} songs...")
             
-            successful = 0
-            failed = 0
-            
-            for i, song in enumerate(songs, 1):
-                print(f"[{i}/{len(songs)}]", end=" ")
+            for i, song in enumerate(songs_to_scrape, 1):
+                print(f"\n[{i}/{len(songs_to_scrape)}]", end=" ")
+                song_data = self.scrape_song_details(song['url'])
                 
-                if self.scrape_song(song):
-                    successful += 1
-                else:
-                    failed += 1
+                if song_data:
+                    self.sheets_data.append(song_data)
                 
                 # Rate limiting
-                time.sleep(2)
+                time.sleep(1)
             
-            # Summary
-            print("\n" + "=" * 60)
-            print("📊 SCRAPING SUMMARY")
-            print("=" * 60)
-            print(f"✅ Successful: {successful}")
-            print(f"❌ Failed: {failed}")
-            print(f"📁 Total songs in database: {len(self.existing_songs) + successful}")
-            print("=" * 60)
+            # Verileri kaydet
+            self.save_data()
+            
+            print("\n" + "="*50)
+            print("✅ SCRAPING COMPLETED SUCCESSFULLY!")
+            print("="*50)
             
         except Exception as e:
-            print(f"\n❌ Fatal error: {e}")
+            print(f"\n❌ Fatal error: {str(e)}")
             raise
         
         finally:
+            print("\n🔒 Closing browser...")
             self.driver.quit()
-
+            print("✅ Browser closed!")
 
 if __name__ == "__main__":
     scraper = PianoSheetsScraper()
-    scraper.run()
+    scraper.run(max_songs=100)  # İlk 100 şarkıyı scrape et
