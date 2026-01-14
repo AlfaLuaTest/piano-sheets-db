@@ -1,7 +1,10 @@
+# API Dependencies
 Flask==3.0.0
 flask-cors==4.0.0
 requests==2.31.0
 beautifulsoup4==4.12.2
 PyGithub==2.1.1
 gunicorn==21.2.0
-lxml==5.1.0
+
+# Scraper Dependencies
+selenium==4.16.0
