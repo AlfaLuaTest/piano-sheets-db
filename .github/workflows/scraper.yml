@@ -43,4 +43,4 @@ jobs:
         run: |
           echo "## Scraping Completed ✅" >> $GITHUB_STEP_SUMMARY
           echo "- Time: $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "- Files Updated: $(git diff --name-only HEAD~1 HEAD | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "- Files Updated: $(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
