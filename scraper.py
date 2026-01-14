@@ -21,6 +21,7 @@ class PianoSheetsScraper:
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
         
+        # WebDriver Manager ile otomatik ChromeDriver kurulumu
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         
@@ -149,7 +150,7 @@ class PianoSheetsScraper:
             except:
                 pass
         
-        # Yeni veriyi ekle (중복 kontrol)
+        # Yeni veriyi ekle (duplicate kontrol)
         existing_urls = [item['url'] for item in existing_data]
         new_count = 0
         
