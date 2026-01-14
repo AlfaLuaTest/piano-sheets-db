@@ -2,8 +2,8 @@ name: Scrape Piano Sheets
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Her 6 saatte bir
-  workflow_dispatch:  # Manuel tetikleme
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   scrape:
@@ -14,18 +14,21 @@ jobs:
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Tüm geçmişi çek
+          clean: true      # Önce temizle
       
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip'
       
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
       
       - name: Install Dependencies
         run: |
-          pip install selenium beautifulsoup4 requests webdriver-manager
+          pip install --no-cache-dir selenium beautifulsoup4 requests webdriver-manager
       
       - name: Run Scraper
         env:
