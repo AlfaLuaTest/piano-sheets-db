@@ -1,11 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import requests
-from bs4 import BeautifulSoup
 import json
 import os
-import time
-import re
 from github import Github
 from datetime import datetime
 
@@ -14,326 +10,251 @@ CORS(app)
 
 # GitHub Configuration
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
-GITHUB_REPO = os.environ.get('GITHUB_REPO', 'username/piano-sheets')
+GITHUB_REPO = os.environ.get('GITHUB_REPO', 'AlfaLuaTest/piano-sheets-db')
 GITHUB_BRANCH = 'main'
+SHEETS_FILE_PATH = 'sheets/piano_sheets.json'
 
 # Initialize GitHub client
 g = Github(GITHUB_TOKEN) if GITHUB_TOKEN else None
 repo = g.get_repo(GITHUB_REPO) if g else None
 
-class PianoSheetsScraper:
-    BASE_URL = "https://playpianosheets.com"
-    
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-    
-    def get_all_songs(self):
-        """Fetch all songs from the category page"""
-        songs = []
-        page = 1
-        
-        while True:
-            try:
-                url = f"{self.BASE_URL}/category/all/page/{page}"
-                response = self.session.get(url, timeout=10)
-                
-                if response.status_code != 200:
-                    break
-                
-                soup = BeautifulSoup(response.text, 'html.parser')
-                song_items = soup.find_all('a', class_='sheet-item') or soup.find_all('div', class_='song-item')
-                
-                if not song_items:
-                    break
-                
-                for item in song_items:
-                    try:
-                        link = item.get('href', '')
-                        title_elem = item.find('h3') or item.find('div', class_='title')
-                        artist_elem = item.find('p', class_='artist') or item.find('div', class_='artist')
-                        
-                        if link and title_elem:
-                            songs.append({
-                                'title': title_elem.text.strip(),
-                                'artist': artist_elem.text.strip() if artist_elem else 'Unknown',
-                                'url': link if link.startswith('http') else f"{self.BASE_URL}{link}",
-                                'id': link.split('/')[-1]
-                            })
-                    except Exception as e:
-                        print(f"Error parsing song item: {e}")
-                        continue
-                
-                page += 1
-                time.sleep(1)  # Rate limiting
-                
-            except Exception as e:
-                print(f"Error fetching page {page}: {e}")
-                break
-        
-        return songs
-    
-    def get_sheet_notes(self, song_url, difficulty='hard'):
-        """Extract sheet notes from a song page"""
-        try:
-            response = self.session.get(song_url, timeout=10)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Find the sheet container
-            sheet_container = soup.find('div', class_='sheet-container') or soup.find('pre', class_='sheet')
-            
-            if not sheet_container:
-                # Try alternative selectors
-                sheet_container = soup.find('code') or soup.find('textarea')
-            
-            if sheet_container:
-                notes = sheet_container.text.strip()
-                
-                # Clean up the notes
-                notes = re.sub(r'\s+', ' ', notes)  # Remove extra whitespace
-                notes = notes.replace(' - ', '-')  # Fix rest notation
-                
-                return notes
-            
-            return None
-            
-        except Exception as e:
-            print(f"Error fetching sheet: {e}")
-            return None
-    
-    def save_to_github(self, song_data, notes):
-        """Save song notes to GitHub repository"""
+def get_songs_data():
+    """Get songs data from GitHub"""
+    try:
         if not repo:
-            return False
+            return None, "GitHub not configured"
         
-        try:
-            # Create filename
-            safe_title = re.sub(r'[^\w\s-]', '', song_data['title']).strip().replace(' ', '_')
-            safe_artist = re.sub(r'[^\w\s-]', '', song_data['artist']).strip().replace(' ', '_')
-            filename = f"sheets/{safe_artist}/{safe_title}.json"
-            
-            # Prepare content
-            content = {
-                'id': song_data['id'],
-                'title': song_data['title'],
-                'artist': song_data['artist'],
-                'url': song_data['url'],
-                'notes': notes,
-                'updated_at': datetime.utcnow().isoformat()
-            }
-            
-            json_content = json.dumps(content, indent=2, ensure_ascii=False)
-            
-            # Check if file exists
-            try:
-                file = repo.get_contents(filename, ref=GITHUB_BRANCH)
-                repo.update_file(
-                    filename,
-                    f"Update {song_data['title']}",
-                    json_content,
-                    file.sha,
-                    branch=GITHUB_BRANCH
-                )
-            except:
-                repo.create_file(
-                    filename,
-                    f"Add {song_data['title']}",
-                    json_content,
-                    branch=GITHUB_BRANCH
-                )
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error saving to GitHub: {e}")
-            return False
-
-scraper = PianoSheetsScraper()
+        file = repo.get_contents(SHEETS_FILE_PATH, ref=GITHUB_BRANCH)
+        songs = json.loads(file.decoded_content.decode())
+        return songs, None
+    except Exception as e:
+        return None, str(e)
 
 @app.route('/')
 def index():
     return jsonify({
         'status': 'online',
+        'name': 'Piano Sheets API',
+        'version': '1.0.0',
+        'description': 'API for accessing Roblox piano sheets from playpianosheets.com',
+        'source': 'https://github.com/AlfaLuaTest/piano-sheets-db',
         'endpoints': {
-            'GET /api/songs': 'Get all available songs',
-            'GET /api/song/<id>': 'Get specific song details',
-            'POST /api/scrape': 'Trigger scraping (protected)',
-            'GET /api/search?q=query': 'Search songs',
-            'GET /api/stats': 'Get statistics'
+            'GET /': 'API information',
+            'GET /api/songs': 'Get all songs (title, artist, url)',
+            'GET /api/songs/full': 'Get all songs with complete data',
+            'GET /api/song/<id>': 'Get specific song by ID',
+            'GET /api/search?q=query': 'Search songs by title or artist',
+            'GET /api/categories': 'Get all available categories',
+            'GET /api/category/<name>': 'Get songs by category',
+            'GET /api/stats': 'Get database statistics',
+            'GET /api/random': 'Get a random song'
         }
     })
 
 @app.route('/api/songs', methods=['GET'])
 def get_songs():
-    """Return list of all available songs from GitHub"""
-    try:
-        if not repo:
-            return jsonify({'error': 'GitHub not configured'}), 500
-        
-        contents = repo.get_contents("sheets", ref=GITHUB_BRANCH)
-        songs = []
-        
-        for artist_folder in contents:
-            if artist_folder.type == "dir":
-                artist_songs = repo.get_contents(artist_folder.path, ref=GITHUB_BRANCH)
-                for song_file in artist_songs:
-                    if song_file.name.endswith('.json'):
-                        try:
-                            content = json.loads(song_file.decoded_content.decode())
-                            songs.append({
-                                'id': content.get('id'),
-                                'title': content.get('title'),
-                                'artist': content.get('artist'),
-                                'path': song_file.path
-                            })
-                        except:
-                            continue
-        
-        return jsonify({
-            'count': len(songs),
-            'songs': songs
-        })
+    """Return simplified list of all songs"""
+    songs, error = get_songs_data()
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Return simplified list (without sheet content)
+    simplified = [{
+        'title': s.get('title'),
+        'artist': s.get('artist', 'Unknown'),
+        'url': s.get('url'),
+        'difficulty': s.get('difficulty', 'Normal'),
+        'thumbnail': s.get('thumbnail'),
+        'id': s.get('url', '').split('/')[-1]
+    } for s in songs]
+    
+    return jsonify({
+        'count': len(simplified),
+        'songs': simplified
+    })
 
-@app.route('/api/song/<song_id>', methods=['GET'])
-def get_song(song_id):
-    """Get specific song with notes"""
-    try:
-        if not repo:
-            return jsonify({'error': 'GitHub not configured'}), 500
-        
-        # Search for song file
-        contents = repo.get_contents("sheets", ref=GITHUB_BRANCH)
-        
-        for artist_folder in contents:
-            if artist_folder.type == "dir":
-                artist_songs = repo.get_contents(artist_folder.path, ref=GITHUB_BRANCH)
-                for song_file in artist_songs:
-                    if song_file.name.endswith('.json'):
-                        try:
-                            content = json.loads(song_file.decoded_content.decode())
-                            if content.get('id') == song_id:
-                                return jsonify(content)
-                        except:
-                            continue
-        
-        return jsonify({'error': 'Song not found'}), 404
+@app.route('/api/songs/full', methods=['GET'])
+def get_songs_full():
+    """Return complete data for all songs"""
+    songs, error = get_songs_data()
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if error:
+        return jsonify({'error': error}), 500
+    
+    return jsonify({
+        'count': len(songs),
+        'songs': songs
+    })
+
+@app.route('/api/song/<path:song_id>', methods=['GET'])
+def get_song(song_id):
+    """Get specific song by ID (from URL slug)"""
+    songs, error = get_songs_data()
+    
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Find song by ID (URL slug)
+    for song in songs:
+        url = song.get('url', '')
+        if song_id in url or url.endswith(f'/{song_id}'):
+            return jsonify(song)
+    
+    return jsonify({'error': 'Song not found'}), 404
 
 @app.route('/api/search', methods=['GET'])
 def search_songs():
     """Search songs by title or artist"""
-    query = request.args.get('q', '').lower()
+    query = request.args.get('q', '').lower().strip()
     
     if not query:
-        return jsonify({'error': 'Query parameter required'}), 400
+        return jsonify({'error': 'Query parameter "q" is required'}), 400
     
-    try:
-        if not repo:
-            return jsonify({'error': 'GitHub not configured'}), 500
-        
-        contents = repo.get_contents("sheets", ref=GITHUB_BRANCH)
-        results = []
-        
-        for artist_folder in contents:
-            if artist_folder.type == "dir":
-                artist_songs = repo.get_contents(artist_folder.path, ref=GITHUB_BRANCH)
-                for song_file in artist_songs:
-                    if song_file.name.endswith('.json'):
-                        try:
-                            content = json.loads(song_file.decoded_content.decode())
-                            title = content.get('title', '').lower()
-                            artist = content.get('artist', '').lower()
-                            
-                            if query in title or query in artist:
-                                results.append({
-                                    'id': content.get('id'),
-                                    'title': content.get('title'),
-                                    'artist': content.get('artist'),
-                                    'notes': content.get('notes')
-                                })
-                        except:
-                            continue
-        
-        return jsonify({
-            'query': query,
-            'count': len(results),
-            'results': results
-        })
+    songs, error = get_songs_data()
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Search in title and artist
+    results = []
+    for song in songs:
+        title = song.get('title', '').lower()
+        artist = song.get('artist', '').lower()
+        
+        if query in title or query in artist:
+            results.append(song)
+    
+    return jsonify({
+        'query': query,
+        'count': len(results),
+        'results': results
+    })
 
-@app.route('/api/scrape', methods=['POST'])
-def scrape_sheets():
-    """Trigger scraping process (protected endpoint)"""
-    # Simple API key protection
-    api_key = request.headers.get('X-API-Key')
-    if api_key != os.environ.get('SCRAPER_API_KEY'):
-        return jsonify({'error': 'Unauthorized'}), 401
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    """Get all available categories"""
+    songs, error = get_songs_data()
     
-    try:
-        # Get all songs
-        songs = scraper.get_all_songs()
-        
-        scraped_count = 0
-        failed = []
-        
-        for song in songs:
-            try:
-                notes = scraper.get_sheet_notes(song['url'])
-                if notes:
-                    if scraper.save_to_github(song, notes):
-                        scraped_count += 1
-                    else:
-                        failed.append(song['title'])
-                time.sleep(2)  # Rate limiting
-            except Exception as e:
-                failed.append(f"{song['title']}: {str(e)}")
-                continue
-        
-        return jsonify({
-            'status': 'completed',
-            'total_songs': len(songs),
-            'scraped': scraped_count,
-            'failed': failed
-        })
+    if error:
+        return jsonify({'error': error}), 500
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # Collect unique categories
+    categories = set()
+    for song in songs:
+        for cat in song.get('categories', []):
+            categories.add(cat)
+    
+    return jsonify({
+        'count': len(categories),
+        'categories': sorted(list(categories))
+    })
+
+@app.route('/api/category/<path:category_name>', methods=['GET'])
+def get_songs_by_category(category_name):
+    """Get songs filtered by category"""
+    songs, error = get_songs_data()
+    
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Filter songs by category
+    filtered = []
+    for song in songs:
+        categories = [c.lower() for c in song.get('categories', [])]
+        if category_name.lower() in categories:
+            filtered.append(song)
+    
+    return jsonify({
+        'category': category_name,
+        'count': len(filtered),
+        'songs': filtered
+    })
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    """Get repository statistics"""
-    try:
-        if not repo:
-            return jsonify({'error': 'GitHub not configured'}), 500
-        
-        contents = repo.get_contents("sheets", ref=GITHUB_BRANCH)
-        total_songs = 0
-        artists = set()
-        
-        for artist_folder in contents:
-            if artist_folder.type == "dir":
-                artists.add(artist_folder.name)
-                artist_songs = repo.get_contents(artist_folder.path, ref=GITHUB_BRANCH)
-                total_songs += len([f for f in artist_songs if f.name.endswith('.json')])
-        
-        return jsonify({
-            'total_songs': total_songs,
-            'total_artists': len(artists),
-            'last_updated': datetime.utcnow().isoformat()
-        })
+    """Get database statistics"""
+    songs, error = get_songs_data()
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Collect statistics
+    total_songs = len(songs)
+    artists = set()
+    difficulties = {}
+    categories = set()
+    total_sheets = 0
+    
+    for song in songs:
+        # Artists
+        artist = song.get('artist', 'Unknown')
+        if artist and artist != 'Unknown Artist':
+            artists.add(artist)
+        
+        # Difficulties
+        difficulty = song.get('difficulty', 'Unknown')
+        difficulties[difficulty] = difficulties.get(difficulty, 0) + 1
+        
+        # Categories
+        for cat in song.get('categories', []):
+            categories.add(cat)
+        
+        # Count sheets
+        total_sheets += len(song.get('sheets', []))
+    
+    # Get last update time
+    last_updated = None
+    if songs:
+        last_updated = songs[-1].get('scraped_at')
+    
+    return jsonify({
+        'total_songs': total_songs,
+        'total_artists': len(artists),
+        'total_categories': len(categories),
+        'total_sheets': total_sheets,
+        'difficulties': difficulties,
+        'last_updated': last_updated,
+        'database_file': SHEETS_FILE_PATH,
+        'repository': GITHUB_REPO
+    })
+
+@app.route('/api/random', methods=['GET'])
+def get_random_song():
+    """Get a random song"""
+    import random
+    
+    songs, error = get_songs_data()
+    
+    if error:
+        return jsonify({'error': error}), 500
+    
+    if not songs:
+        return jsonify({'error': 'No songs available'}), 404
+    
+    random_song = random.choice(songs)
+    return jsonify(random_song)
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
+    
+    print(f"""
+    ╔══════════════════════════════════════╗
+    ║   🎹 Piano Sheets API Server        ║
+    ╠══════════════════════════════════════╣
+    ║   Port: {port}                     ║
+    ║   Debug: {debug}                   ║
+    ║   Repository: {GITHUB_REPO}        ║
+    ╚══════════════════════════════════════╝
+    """)
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
