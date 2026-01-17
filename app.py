@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 import os
+import re
 from github import Github
 from datetime import datetime
 
@@ -13,7 +14,7 @@ GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 GITHUB_REPO = os.environ.get('GITHUB_REPO', 'AlfaLuaTest/piano-sheets-db')
 GITHUB_BRANCH = 'main'
 SHEETS_FILE_PATH = 'sheets/piano_sheets.json'
-FAVORITES_FILE_PATH = 'data.js'
+FAVORITES_FILE_PATH = 'users/data.js'
 
 # Initialize GitHub client
 g = Github(GITHUB_TOKEN) if GITHUB_TOKEN else None
@@ -31,29 +32,37 @@ def get_songs_data():
     except Exception as e:
         return None, str(e)
 
-def get_favorites():
-    """Get favorites from data.js"""
+def get_all_favorites():
+    """Get all users' favorites from data.js"""
     try:
         if not repo:
-            return [], "GitHub not configured"
+            return {}, "GitHub not configured"
         
         file = repo.get_contents(FAVORITES_FILE_PATH, ref=GITHUB_BRANCH)
         content = file.decoded_content.decode()
         
-        # Parse JavaScript array
-        import re
-        match = re.search(r'favorites\s*=\s*\[(.*?)\]', content, re.DOTALL)
+        # Parse JavaScript object
+        # favorites = { "user_id": ["song1", "song2"], ... }
+        match = re.search(r'favorites\s*=\s*({[\s\S]*?});', content)
         if match:
-            favorites_str = match.group(1)
-            # Extract quoted strings
-            favorites = re.findall(r'"([^"]+)"', favorites_str)
+            json_str = match.group(1)
+            # Convert JS object to JSON (replace single quotes with double quotes)
+            json_str = json_str.replace("'", '"')
+            favorites = json.loads(json_str)
             return favorites, None
-        return [], None
+        return {}, None
     except Exception as e:
-        return [], str(e)
+        return {}, str(e)
 
-def update_favorites(favorites_list):
-    """Update favorites in data.js"""
+def get_user_favorites(user_id):
+    """Get specific user's favorites"""
+    all_favs, error = get_all_favorites()
+    if error:
+        return [], error
+    return all_favs.get(user_id, []), None
+
+def update_user_favorites(user_id, favorites_list):
+    """Update specific user's favorites in data.js"""
     try:
         if not repo:
             return False, "GitHub not configured"
@@ -61,20 +70,32 @@ def update_favorites(favorites_list):
         # Get current file
         file = repo.get_contents(FAVORITES_FILE_PATH, ref=GITHUB_BRANCH)
         
-        # Create new content
-        favorites_js = ',\n  '.join([f'"{fav}"' for fav in favorites_list])
+        # Get all favorites
+        all_favs, error = get_all_favorites()
+        if error and "not configured" in error:
+            return False, error
+        
+        # Update this user's favorites
+        all_favs[user_id] = favorites_list
+        
+        # Convert to JavaScript format
+        js_content = "export const favorites = {\n"
+        for uid, favs in all_favs.items():
+            songs_str = ', '.join([f'"{song}"' for song in favs])
+            js_content += f'  "{uid}": [{songs_str}],\n'
+        js_content = js_content.rstrip(',\n') + '\n};\n'
+        
+        # Add header
         new_content = f"""// Auto-generated favorites list
+// Multi-user support - each user has their own favorites
 // Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 
-export const favorites = [
-  {favorites_js}
-];
-"""
+{js_content}"""
         
         # Update file
         repo.update_file(
             FAVORITES_FILE_PATH,
-            f"Update favorites ({len(favorites_list)} items)",
+            f"Update favorites for user {user_id}",
             new_content,
             file.sha,
             branch=GITHUB_BRANCH
@@ -90,7 +111,7 @@ def index():
         'status': 'online',
         'name': 'Matcha Piano Sheets API',
         'version': '2.0.0',
-        'description': 'API for Matcha Piano Player - Roblox piano sheets from playpianosheets.com',
+        'description': 'Multi-user API for Matcha Piano Player',
         'source': 'https://github.com/AlfaLuaTest/piano-sheets-db',
         'endpoints': {
             'GET /': 'API information',
@@ -102,10 +123,11 @@ def index():
             'GET /api/category/<name>': 'Get songs by category',
             'GET /api/stats': 'Get database statistics',
             'GET /api/random': 'Get a random song',
-            'GET /api/favorites': 'Get user favorites',
-            'POST /api/favorites/add': 'Add song to favorites',
-            'POST /api/favorites/remove': 'Remove song from favorites',
-            'GET /data.js': 'Get favorites as JavaScript module'
+            'GET /api/favorites/<user_id>': 'Get user favorites',
+            'POST /api/favorites/<user_id>/add': 'Add song to user favorites',
+            'POST /api/favorites/<user_id>/remove': 'Remove song from user favorites',
+            'GET /api/users/count': 'Get total user count',
+            'GET /users/data.js': 'Get raw data.js file'
         }
     })
 
@@ -117,7 +139,6 @@ def get_songs():
     if error:
         return jsonify({'error': error}), 500
     
-    # Return simplified list (without sheet content)
     simplified = [{
         'title': s.get('title'),
         'artist': s.get('artist', 'Unknown'),
@@ -148,13 +169,12 @@ def get_songs_full():
 
 @app.route('/api/song/<path:song_id>', methods=['GET'])
 def get_song(song_id):
-    """Get specific song by ID (from URL slug)"""
+    """Get specific song by ID"""
     songs, error = get_songs_data()
     
     if error:
         return jsonify({'error': error}), 500
     
-    # Find song by ID (URL slug)
     for song in songs:
         url = song.get('url', '')
         if song_id in url or url.endswith(f'/{song_id}'):
@@ -175,13 +195,12 @@ def search_songs():
     if error:
         return jsonify({'error': error}), 500
     
-    # Search in title and artist
     results = []
     for song in songs:
         title = song.get('title', '').lower()
         artist = song.get('artist', '').lower()
         
-        if query in title or query in artist:
+        if query in title or artist in query:
             results.append(song)
     
     return jsonify({
@@ -198,7 +217,6 @@ def get_categories():
     if error:
         return jsonify({'error': error}), 500
     
-    # Collect unique categories
     categories = set()
     for song in songs:
         for cat in song.get('categories', []):
@@ -217,7 +235,6 @@ def get_songs_by_category(category_name):
     if error:
         return jsonify({'error': error}), 500
     
-    # Filter songs by category
     filtered = []
     for song in songs:
         categories = [c.lower() for c in song.get('categories', [])]
@@ -238,9 +255,8 @@ def get_stats():
     if error:
         return jsonify({'error': error}), 500
     
-    favorites, _ = get_favorites()
+    all_favs, _ = get_all_favorites()
     
-    # Collect statistics
     total_songs = len(songs)
     artists = set()
     difficulties = {}
@@ -248,23 +264,18 @@ def get_stats():
     total_sheets = 0
     
     for song in songs:
-        # Artists
         artist = song.get('artist', 'Unknown')
         if artist and artist != 'Unknown Artist':
             artists.add(artist)
         
-        # Difficulties
         difficulty = song.get('difficulty', 'Unknown')
         difficulties[difficulty] = difficulties.get(difficulty, 0) + 1
         
-        # Categories
         for cat in song.get('categories', []):
             categories.add(cat)
         
-        # Count sheets
         total_sheets += len(song.get('sheets', []))
     
-    # Get last update time
     last_updated = None
     if songs:
         last_updated = songs[-1].get('scraped_at')
@@ -274,7 +285,8 @@ def get_stats():
         'total_artists': len(artists),
         'total_categories': len(categories),
         'total_sheets': total_sheets,
-        'total_favorites': len(favorites),
+        'total_users': len(all_favs),
+        'total_favorites': sum(len(favs) for favs in all_favs.values()),
         'difficulties': difficulties,
         'last_updated': last_updated,
         'database_file': SHEETS_FILE_PATH,
@@ -294,25 +306,25 @@ def get_random_song():
     if not songs:
         return jsonify({'error': 'No songs available'}), 404
     
-    random_song = random.choice(songs)
-    return jsonify(random_song)
+    return jsonify(random.choice(songs))
 
-@app.route('/api/favorites', methods=['GET'])
-def get_favorites_list():
-    """Get list of favorite song IDs"""
-    favorites, error = get_favorites()
+@app.route('/api/favorites/<user_id>', methods=['GET'])
+def get_favorites_route(user_id):
+    """Get specific user's favorites"""
+    favorites, error = get_user_favorites(user_id)
     
     if error:
         return jsonify({'error': error}), 500
     
     return jsonify({
+        'user_id': user_id,
         'count': len(favorites),
         'favorites': favorites
     })
 
-@app.route('/api/favorites/add', methods=['POST'])
-def add_favorite():
-    """Add a song to favorites"""
+@app.route('/api/favorites/<user_id>/add', methods=['POST'])
+def add_favorite(user_id):
+    """Add a song to user's favorites"""
     data = request.get_json()
     
     if not data or 'song_id' not in data:
@@ -321,31 +333,36 @@ def add_favorite():
     song_id = data['song_id']
     
     # Get current favorites
-    favorites, error = get_favorites()
+    favorites, error = get_user_favorites(user_id)
     if error:
         return jsonify({'error': error}), 500
     
     # Check if already exists
     if song_id in favorites:
-        return jsonify({'message': 'Already in favorites', 'favorites': favorites})
+        return jsonify({
+            'message': 'Already in favorites',
+            'user_id': user_id,
+            'favorites': favorites
+        })
     
     # Add to favorites
     favorites.append(song_id)
     
     # Update file
-    success, error = update_favorites(favorites)
+    success, error = update_user_favorites(user_id, favorites)
     if not success:
         return jsonify({'error': error}), 500
     
     return jsonify({
         'message': 'Added to favorites',
+        'user_id': user_id,
         'count': len(favorites),
         'favorites': favorites
     })
 
-@app.route('/api/favorites/remove', methods=['POST'])
-def remove_favorite():
-    """Remove a song from favorites"""
+@app.route('/api/favorites/<user_id>/remove', methods=['POST'])
+def remove_favorite(user_id):
+    """Remove a song from user's favorites"""
     data = request.get_json()
     
     if not data or 'song_id' not in data:
@@ -354,7 +371,7 @@ def remove_favorite():
     song_id = data['song_id']
     
     # Get current favorites
-    favorites, error = get_favorites()
+    favorites, error = get_user_favorites(user_id)
     if error:
         return jsonify({'error': error}), 500
     
@@ -363,34 +380,56 @@ def remove_favorite():
         favorites.remove(song_id)
         
         # Update file
-        success, error = update_favorites(favorites)
+        success, error = update_user_favorites(user_id, favorites)
         if not success:
             return jsonify({'error': error}), 500
         
         return jsonify({
             'message': 'Removed from favorites',
+            'user_id': user_id,
             'count': len(favorites),
             'favorites': favorites
         })
     else:
-        return jsonify({'message': 'Not in favorites', 'favorites': favorites})
+        return jsonify({
+            'message': 'Not in favorites',
+            'user_id': user_id,
+            'favorites': favorites
+        })
 
-@app.route('/data.js', methods=['GET'])
-def get_data_js():
-    """Serve data.js file directly"""
-    favorites, error = get_favorites()
+@app.route('/api/users/count', methods=['GET'])
+def get_user_count():
+    """Get total number of users"""
+    all_favs, error = get_all_favorites()
     
     if error:
-        favorites = []
+        return jsonify({'error': error}), 500
     
-    favorites_js = ',\n  '.join([f'"{fav}"' for fav in favorites])
+    return jsonify({
+        'total_users': len(all_favs),
+        'users': list(all_favs.keys())
+    })
+
+@app.route('/users/data.js', methods=['GET'])
+def get_data_js():
+    """Serve data.js file directly"""
+    all_favs, error = get_all_favorites()
+    
+    if error:
+        all_favs = {}
+    
+    # Generate JavaScript content
+    js_content = "export const favorites = {\n"
+    for user_id, favs in all_favs.items():
+        songs_str = ', '.join([f'"{song}"' for song in favs])
+        js_content += f'  "{user_id}": [{songs_str}],\n'
+    js_content = js_content.rstrip(',\n') + '\n};\n'
+    
     content = f"""// Auto-generated favorites list
+// Multi-user support - each user has their own favorites
 // Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 
-export const favorites = [
-  {favorites_js}
-];
-"""
+{js_content}"""
     
     return content, 200, {'Content-Type': 'application/javascript'}
 
@@ -412,6 +451,7 @@ if __name__ == '__main__':
     ╠═══════════════════════════════════════╣
     ║   Port: {port}                        ║
     ║   Debug: {debug}                      ║
+    ║   Multi-User: ✓                       ║
     ║   Repository: {GITHUB_REPO}           ║
     ╚═══════════════════════════════════════╝
     """)
