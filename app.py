@@ -5,6 +5,7 @@ import os
 import re
 from github import Github
 from datetime import datetime
+import base64
 
 app = Flask(__name__)
 CORS(app)
@@ -21,17 +22,42 @@ g = Github(GITHUB_TOKEN) if GITHUB_TOKEN else None
 repo = g.get_repo(GITHUB_REPO) if g else None
 
 def get_songs_data():
-    """Get songs data from GitHub"""
+    """Get songs data from GitHub - FİXED for large files"""
     try:
         if not repo:
             print("ERROR: GitHub not configured - GITHUB_TOKEN missing")
             return None, "GitHub not configured - check GITHUB_TOKEN environment variable"
         
         print(f"Fetching songs from: {GITHUB_REPO}/{SHEETS_FILE_PATH}")
-        file = repo.get_contents(SHEETS_FILE_PATH, ref=GITHUB_BRANCH)
-        songs = json.loads(file.decoded_content.decode())
-        print(f"Successfully loaded {len(songs)} songs")
-        return songs, None
+        
+        # FİX: Use raw content URL for large files
+        try:
+            file = repo.get_contents(SHEETS_FILE_PATH, ref=GITHUB_BRANCH)
+            
+            # Check if encoding is 'none' (file too large)
+            if file.encoding == 'none':
+                print("  → File too large, using download_url instead")
+                import requests
+                response = requests.get(file.download_url)
+                content = response.text
+            else:
+                # Normal decoding for smaller files
+                content = file.decoded_content.decode()
+            
+            songs = json.loads(content)
+            print(f"  ✓ Successfully loaded {len(songs)} songs!")
+            return songs, None
+            
+        except AssertionError as ae:
+            # Fallback: direct raw URL
+            print(f"  → AssertionError, using raw URL: {str(ae)}")
+            raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{SHEETS_FILE_PATH}"
+            import requests
+            response = requests.get(raw_url)
+            songs = json.loads(response.text)
+            print(f"  ✓ Loaded {len(songs)} songs via raw URL!")
+            return songs, None
+            
     except Exception as e:
         print(f"ERROR in get_songs_data: {str(e)}")
         import traceback
@@ -45,14 +71,18 @@ def get_all_favorites():
             return {}, "GitHub not configured"
         
         file = repo.get_contents(FAVORITES_FILE_PATH, ref=GITHUB_BRANCH)
-        content = file.decoded_content.decode()
+        
+        # Handle large files
+        if file.encoding == 'none':
+            import requests
+            content = requests.get(file.download_url).text
+        else:
+            content = file.decoded_content.decode()
         
         # Parse JavaScript object
-        # favorites = { "user_id": ["song1", "song2"], ... }
         match = re.search(r'favorites\s*=\s*({[\s\S]*?});', content)
         if match:
             json_str = match.group(1)
-            # Convert JS object to JSON (replace single quotes with double quotes)
             json_str = json_str.replace("'", '"')
             favorites = json.loads(json_str)
             return favorites, None
@@ -73,15 +103,12 @@ def update_user_favorites(user_id, favorites_list):
         if not repo:
             return False, "GitHub not configured"
         
-        # Get current file
         file = repo.get_contents(FAVORITES_FILE_PATH, ref=GITHUB_BRANCH)
         
-        # Get all favorites
         all_favs, error = get_all_favorites()
         if error and "not configured" in error:
             return False, error
         
-        # Update this user's favorites
         all_favs[user_id] = favorites_list
         
         # Convert to JavaScript format
@@ -91,14 +118,12 @@ def update_user_favorites(user_id, favorites_list):
             js_content += f'  "{uid}": [{songs_str}],\n'
         js_content = js_content.rstrip(',\n') + '\n};\n'
         
-        # Add header
         new_content = f"""// Auto-generated favorites list
 // Multi-user support - each user has their own favorites
 // Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 
 {js_content}"""
         
-        # Update file
         repo.update_file(
             FAVORITES_FILE_PATH,
             f"Update favorites for user {user_id}",
@@ -116,7 +141,7 @@ def index():
     return jsonify({
         'status': 'online',
         'name': 'Matcha Piano Sheets API',
-        'version': '2.0.0',
+        'version': '2.1.0',
         'description': 'Multi-user API for Matcha Piano Player',
         'source': 'https://github.com/AlfaLuaTest/piano-sheets-db',
         'endpoints': {
@@ -132,8 +157,7 @@ def index():
             'GET /api/favorites/<user_id>': 'Get user favorites',
             'POST /api/favorites/<user_id>/add': 'Add song to user favorites',
             'POST /api/favorites/<user_id>/remove': 'Remove song from user favorites',
-            'GET /api/users/count': 'Get total user count',
-            'GET /users/data.js': 'Get raw data.js file'
+            'GET /api/users/count': 'Get total user count'
         }
     })
 
@@ -166,37 +190,7 @@ def get_songs_full():
     songs, error = get_songs_data()
     
     if error:
-        # Return mock data for testing if GitHub fails
-        print(f"WARNING: Returning mock data due to error: {error}")
-        mock_songs = [
-            {
-                "title": "Kid Cudi - Playboi Carti",
-                "artist": "Playboi Carti",
-                "url": "https://playpianosheets.com/sheets/kid-cudi",
-                "difficulty": "Normal",
-                "categories": ["Pop", "Popular"],
-                "sheets": [{
-                    "difficulty": "Normal",
-                    "content": "[(D]-h-l-z-J-l-[9j]-g-h-[oPdg]--[(D]-h-l-z-J-l-[9j]-g-h-[oPdg]--"
-                }]
-            },
-            {
-                "title": "Bohemian Rhapsody - Queen",
-                "artist": "Queen",
-                "url": "https://playpianosheets.com/sheets/bohemian-rhapsody",
-                "difficulty": "Advanced",
-                "categories": ["Classical", "Popular"],
-                "sheets": [{
-                    "difficulty": "Advanced",
-                    "content": "[qet]-[wry]-[eui]-[ryo]-[tup]--[yia]--"
-                }]
-            }
-        ]
-        return jsonify({
-            'count': len(mock_songs),
-            'songs': mock_songs,
-            'note': 'Using mock data - GitHub not configured'
-        })
+        return jsonify({'error': error}), 500
     
     return jsonify({
         'count': len(songs),
@@ -236,7 +230,7 @@ def search_songs():
         title = song.get('title', '').lower()
         artist = song.get('artist', '').lower()
         
-        if query in title or artist in query:
+        if query in title or query in artist:
             results.append(song)
     
     return jsonify({
@@ -312,10 +306,6 @@ def get_stats():
         
         total_sheets += len(song.get('sheets', []))
     
-    last_updated = None
-    if songs:
-        last_updated = songs[-1].get('scraped_at')
-    
     return jsonify({
         'total_songs': total_songs,
         'total_artists': len(artists),
@@ -324,7 +314,6 @@ def get_stats():
         'total_users': len(all_favs),
         'total_favorites': sum(len(favs) for favs in all_favs.values()),
         'difficulties': difficulties,
-        'last_updated': last_updated,
         'database_file': SHEETS_FILE_PATH,
         'repository': GITHUB_REPO
     })
@@ -349,7 +338,6 @@ def get_favorites_route(user_id):
     """Get specific user's favorites"""
     favorites, error = get_user_favorites(user_id)
     
-    # Return empty list for new users instead of error
     if error and "not configured" not in error:
         favorites = []
     
@@ -369,12 +357,10 @@ def add_favorite(user_id):
     
     song_id = data['song_id']
     
-    # Get current favorites
     favorites, error = get_user_favorites(user_id)
     if error:
         return jsonify({'error': error}), 500
     
-    # Check if already exists
     if song_id in favorites:
         return jsonify({
             'message': 'Already in favorites',
@@ -382,10 +368,8 @@ def add_favorite(user_id):
             'favorites': favorites
         })
     
-    # Add to favorites
     favorites.append(song_id)
     
-    # Update file
     success, error = update_user_favorites(user_id, favorites)
     if not success:
         return jsonify({'error': error}), 500
@@ -407,16 +391,13 @@ def remove_favorite(user_id):
     
     song_id = data['song_id']
     
-    # Get current favorites
     favorites, error = get_user_favorites(user_id)
     if error:
         return jsonify({'error': error}), 500
     
-    # Remove from favorites
     if song_id in favorites:
         favorites.remove(song_id)
         
-        # Update file
         success, error = update_user_favorites(user_id, favorites)
         if not success:
             return jsonify({'error': error}), 500
@@ -446,29 +427,6 @@ def get_user_count():
         'total_users': len(all_favs),
         'users': list(all_favs.keys())
     })
-
-@app.route('/users/data.js', methods=['GET'])
-def get_data_js():
-    """Serve data.js file directly"""
-    all_favs, error = get_all_favorites()
-    
-    if error:
-        all_favs = {}
-    
-    # Generate JavaScript content
-    js_content = "export const favorites = {\n"
-    for user_id, favs in all_favs.items():
-        songs_str = ', '.join([f'"{song}"' for song in favs])
-        js_content += f'  "{user_id}": [{songs_str}],\n'
-    js_content = js_content.rstrip(',\n') + '\n};\n'
-    
-    content = f"""// Auto-generated favorites list
-// Multi-user support - each user has their own favorites
-// Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
-
-{js_content}"""
-    
-    return content, 200, {'Content-Type': 'application/javascript'}
 
 @app.errorhandler(404)
 def not_found(error):
