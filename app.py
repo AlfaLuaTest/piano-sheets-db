@@ -13,6 +13,7 @@ GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 GITHUB_REPO = os.environ.get('GITHUB_REPO', 'AlfaLuaTest/piano-sheets-db')
 GITHUB_BRANCH = 'main'
 SHEETS_FILE_PATH = 'sheets/piano_sheets.json'
+FAVORITES_FILE_PATH = 'data.js'
 
 # Initialize GitHub client
 g = Github(GITHUB_TOKEN) if GITHUB_TOKEN else None
@@ -30,24 +31,81 @@ def get_songs_data():
     except Exception as e:
         return None, str(e)
 
+def get_favorites():
+    """Get favorites from data.js"""
+    try:
+        if not repo:
+            return [], "GitHub not configured"
+        
+        file = repo.get_contents(FAVORITES_FILE_PATH, ref=GITHUB_BRANCH)
+        content = file.decoded_content.decode()
+        
+        # Parse JavaScript array
+        import re
+        match = re.search(r'favorites\s*=\s*\[(.*?)\]', content, re.DOTALL)
+        if match:
+            favorites_str = match.group(1)
+            # Extract quoted strings
+            favorites = re.findall(r'"([^"]+)"', favorites_str)
+            return favorites, None
+        return [], None
+    except Exception as e:
+        return [], str(e)
+
+def update_favorites(favorites_list):
+    """Update favorites in data.js"""
+    try:
+        if not repo:
+            return False, "GitHub not configured"
+        
+        # Get current file
+        file = repo.get_contents(FAVORITES_FILE_PATH, ref=GITHUB_BRANCH)
+        
+        # Create new content
+        favorites_js = ',\n  '.join([f'"{fav}"' for fav in favorites_list])
+        new_content = f"""// Auto-generated favorites list
+// Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+
+export const favorites = [
+  {favorites_js}
+];
+"""
+        
+        # Update file
+        repo.update_file(
+            FAVORITES_FILE_PATH,
+            f"Update favorites ({len(favorites_list)} items)",
+            new_content,
+            file.sha,
+            branch=GITHUB_BRANCH
+        )
+        
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
 @app.route('/')
 def index():
     return jsonify({
         'status': 'online',
-        'name': 'Piano Sheets API',
-        'version': '1.0.0',
-        'description': 'API for accessing Roblox piano sheets from playpianosheets.com',
+        'name': 'Matcha Piano Sheets API',
+        'version': '2.0.0',
+        'description': 'API for Matcha Piano Player - Roblox piano sheets from playpianosheets.com',
         'source': 'https://github.com/AlfaLuaTest/piano-sheets-db',
         'endpoints': {
             'GET /': 'API information',
-            'GET /api/songs': 'Get all songs (title, artist, url)',
-            'GET /api/songs/full': 'Get all songs with complete data',
+            'GET /api/songs': 'Get all songs (simplified)',
+            'GET /api/songs/full': 'Get all songs with sheet music',
             'GET /api/song/<id>': 'Get specific song by ID',
             'GET /api/search?q=query': 'Search songs by title or artist',
             'GET /api/categories': 'Get all available categories',
             'GET /api/category/<name>': 'Get songs by category',
             'GET /api/stats': 'Get database statistics',
-            'GET /api/random': 'Get a random song'
+            'GET /api/random': 'Get a random song',
+            'GET /api/favorites': 'Get user favorites',
+            'POST /api/favorites/add': 'Add song to favorites',
+            'POST /api/favorites/remove': 'Remove song from favorites',
+            'GET /data.js': 'Get favorites as JavaScript module'
         }
     })
 
@@ -66,7 +124,8 @@ def get_songs():
         'url': s.get('url'),
         'difficulty': s.get('difficulty', 'Normal'),
         'thumbnail': s.get('thumbnail'),
-        'id': s.get('url', '').split('/')[-1]
+        'id': s.get('url', '').split('/')[-1],
+        'categories': s.get('categories', [])
     } for s in songs]
     
     return jsonify({
@@ -76,7 +135,7 @@ def get_songs():
 
 @app.route('/api/songs/full', methods=['GET'])
 def get_songs_full():
-    """Return complete data for all songs"""
+    """Return complete data for all songs including sheet music"""
     songs, error = get_songs_data()
     
     if error:
@@ -179,6 +238,8 @@ def get_stats():
     if error:
         return jsonify({'error': error}), 500
     
+    favorites, _ = get_favorites()
+    
     # Collect statistics
     total_songs = len(songs)
     artists = set()
@@ -213,6 +274,7 @@ def get_stats():
         'total_artists': len(artists),
         'total_categories': len(categories),
         'total_sheets': total_sheets,
+        'total_favorites': len(favorites),
         'difficulties': difficulties,
         'last_updated': last_updated,
         'database_file': SHEETS_FILE_PATH,
@@ -235,6 +297,103 @@ def get_random_song():
     random_song = random.choice(songs)
     return jsonify(random_song)
 
+@app.route('/api/favorites', methods=['GET'])
+def get_favorites_list():
+    """Get list of favorite song IDs"""
+    favorites, error = get_favorites()
+    
+    if error:
+        return jsonify({'error': error}), 500
+    
+    return jsonify({
+        'count': len(favorites),
+        'favorites': favorites
+    })
+
+@app.route('/api/favorites/add', methods=['POST'])
+def add_favorite():
+    """Add a song to favorites"""
+    data = request.get_json()
+    
+    if not data or 'song_id' not in data:
+        return jsonify({'error': 'song_id is required'}), 400
+    
+    song_id = data['song_id']
+    
+    # Get current favorites
+    favorites, error = get_favorites()
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Check if already exists
+    if song_id in favorites:
+        return jsonify({'message': 'Already in favorites', 'favorites': favorites})
+    
+    # Add to favorites
+    favorites.append(song_id)
+    
+    # Update file
+    success, error = update_favorites(favorites)
+    if not success:
+        return jsonify({'error': error}), 500
+    
+    return jsonify({
+        'message': 'Added to favorites',
+        'count': len(favorites),
+        'favorites': favorites
+    })
+
+@app.route('/api/favorites/remove', methods=['POST'])
+def remove_favorite():
+    """Remove a song from favorites"""
+    data = request.get_json()
+    
+    if not data or 'song_id' not in data:
+        return jsonify({'error': 'song_id is required'}), 400
+    
+    song_id = data['song_id']
+    
+    # Get current favorites
+    favorites, error = get_favorites()
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Remove from favorites
+    if song_id in favorites:
+        favorites.remove(song_id)
+        
+        # Update file
+        success, error = update_favorites(favorites)
+        if not success:
+            return jsonify({'error': error}), 500
+        
+        return jsonify({
+            'message': 'Removed from favorites',
+            'count': len(favorites),
+            'favorites': favorites
+        })
+    else:
+        return jsonify({'message': 'Not in favorites', 'favorites': favorites})
+
+@app.route('/data.js', methods=['GET'])
+def get_data_js():
+    """Serve data.js file directly"""
+    favorites, error = get_favorites()
+    
+    if error:
+        favorites = []
+    
+    favorites_js = ',\n  '.join([f'"{fav}"' for fav in favorites])
+    content = f"""// Auto-generated favorites list
+// Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+
+export const favorites = [
+  {favorites_js}
+];
+"""
+    
+    return content, 200, {'Content-Type': 'application/javascript'}
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint not found'}), 404
@@ -248,13 +407,13 @@ if __name__ == '__main__':
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     
     print(f"""
-    ╔══════════════════════════════════════╗
-    ║   🎹 Piano Sheets API Server        ║
-    ╠══════════════════════════════════════╣
-    ║   Port: {port}                     ║
-    ║   Debug: {debug}                   ║
-    ║   Repository: {GITHUB_REPO}        ║
-    ╚══════════════════════════════════════╝
+    ╔═══════════════════════════════════════╗
+    ║   🎹 Matcha Piano Sheets API Server   ║
+    ╠═══════════════════════════════════════╣
+    ║   Port: {port}                        ║
+    ║   Debug: {debug}                      ║
+    ║   Repository: {GITHUB_REPO}           ║
+    ╚═══════════════════════════════════════╝
     """)
     
     app.run(host='0.0.0.0', port=port, debug=debug)
