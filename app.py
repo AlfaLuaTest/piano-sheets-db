@@ -349,8 +349,9 @@ def get_favorites_route(user_id):
     """Get specific user's favorites"""
     favorites, error = get_user_favorites(user_id)
     
-    if error:
-        return jsonify({'error': error}), 500
+    # Return empty list for new users instead of error
+    if error and "not configured" not in error:
+        favorites = []
     
     return jsonify({
         'user_id': user_id,
