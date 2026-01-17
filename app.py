@@ -22,7 +22,7 @@ g = Github(GITHUB_TOKEN) if GITHUB_TOKEN else None
 repo = g.get_repo(GITHUB_REPO) if g else None
 
 def get_songs_data():
-    """Get songs data from GitHub - FİXED for large files"""
+    """Get songs data from GitHub - FIXED for large files"""
     try:
         if not repo:
             print("ERROR: GitHub not configured - GITHUB_TOKEN missing")
@@ -30,7 +30,7 @@ def get_songs_data():
         
         print(f"Fetching songs from: {GITHUB_REPO}/{SHEETS_FILE_PATH}")
         
-        # FİX: Use raw content URL for large files
+        # FIX: Use raw content URL for large files
         try:
             file = repo.get_contents(SHEETS_FILE_PATH, ref=GITHUB_BRANCH)
             
@@ -141,8 +141,8 @@ def index():
     return jsonify({
         'status': 'online',
         'name': 'Matcha Piano Sheets API',
-        'version': '2.1.0',
-        'description': 'Multi-user API for Matcha Piano Player',
+        'version': '2.2.0',
+        'description': 'Multi-user API for Matcha Piano Player - GET/POST Support',
         'source': 'https://github.com/AlfaLuaTest/piano-sheets-db',
         'endpoints': {
             'GET /': 'API information',
@@ -155,8 +155,8 @@ def index():
             'GET /api/stats': 'Get database statistics',
             'GET /api/random': 'Get a random song',
             'GET /api/favorites/<user_id>': 'Get user favorites',
-            'POST /api/favorites/<user_id>/add': 'Add song to user favorites',
-            'POST /api/favorites/<user_id>/remove': 'Remove song from user favorites',
+            'GET/POST /api/favorites/<user_id>/add': 'Add song to favorites (GET: ?song_id=X)',
+            'GET/POST /api/favorites/<user_id>/remove': 'Remove song from favorites (GET: ?song_id=X)',
             'GET /api/users/count': 'Get total user count'
         }
     })
@@ -347,15 +347,20 @@ def get_favorites_route(user_id):
         'favorites': favorites
     })
 
-@app.route('/api/favorites/<user_id>/add', methods=['POST'])
+# ✅ YENİ: GET ve POST desteği
+@app.route('/api/favorites/<user_id>/add', methods=['GET', 'POST'])
 def add_favorite(user_id):
-    """Add a song to user's favorites"""
-    data = request.get_json()
+    """Add a song to user's favorites - Supports both GET and POST"""
     
-    if not data or 'song_id' not in data:
+    # Get song_id from query params (GET) or JSON body (POST)
+    if request.method == 'GET':
+        song_id = request.args.get('song_id')
+    else:
+        data = request.get_json()
+        song_id = data.get('song_id') if data else None
+    
+    if not song_id:
         return jsonify({'error': 'song_id is required'}), 400
-    
-    song_id = data['song_id']
     
     favorites, error = get_user_favorites(user_id)
     if error:
@@ -381,15 +386,20 @@ def add_favorite(user_id):
         'favorites': favorites
     })
 
-@app.route('/api/favorites/<user_id>/remove', methods=['POST'])
+# ✅ YENİ: GET ve POST desteği
+@app.route('/api/favorites/<user_id>/remove', methods=['GET', 'POST'])
 def remove_favorite(user_id):
-    """Remove a song from user's favorites"""
-    data = request.get_json()
+    """Remove a song from user's favorites - Supports both GET and POST"""
     
-    if not data or 'song_id' not in data:
+    # Get song_id from query params (GET) or JSON body (POST)
+    if request.method == 'GET':
+        song_id = request.args.get('song_id')
+    else:
+        data = request.get_json()
+        song_id = data.get('song_id') if data else None
+    
+    if not song_id:
         return jsonify({'error': 'song_id is required'}), 400
-    
-    song_id = data['song_id']
     
     favorites, error = get_user_favorites(user_id)
     if error:
@@ -447,6 +457,7 @@ if __name__ == '__main__':
     ║   Port: {port}                        ║
     ║   Debug: {debug}                      ║
     ║   Multi-User: ✓                       ║
+    ║   GET Support: ✓ (NEW)                ║
     ║   Repository: {GITHUB_REPO}           ║
     ╚═══════════════════════════════════════╝
     """)
