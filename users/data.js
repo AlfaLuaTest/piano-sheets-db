@@ -1,7 +1,7 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-18 12:52:01 UTC
+// Updated: 2026-01-18 12:52:12 UTC
 
 export const favorites = {
-  "918031124": ["grandmas-home", "pork-soda", "promise"]
+  "918031124": ["grandmas-home", "pork-soda", "promise", "kid-cudi"]
 };
