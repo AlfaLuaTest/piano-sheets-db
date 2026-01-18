@@ -83,9 +83,20 @@ def get_all_favorites():
         match = re.search(r'favorites\s*=\s*({[\s\S]*?});', content)
         if match:
             json_str = match.group(1)
+            # Remove comments
+            json_str = re.sub(r'//.*?\n', '', json_str)
+            # Replace single quotes with double quotes
             json_str = json_str.replace("'", '"')
-            favorites = json.loads(json_str)
-            return favorites, None
+            # Remove trailing commas before closing braces
+            json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+            
+            try:
+                favorites = json.loads(json_str)
+                return favorites, None
+            except json.JSONDecodeError as e:
+                print(f"JSON Parse Error: {e}")
+                print(f"Problematic JSON: {json_str[:200]}")
+                return {}, None
         return {}, None
     except Exception as e:
         return {}, str(e)
