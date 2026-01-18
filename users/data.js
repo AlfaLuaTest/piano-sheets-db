@@ -3,5 +3,5 @@
 // Updated: 2026-01-18 21:26:15 UTC
 
 export const favorites = {
-  "918031124": ["grandmas-home", "kid-cudi", "resonanse-heavens-secret-requiem", "promise"]
+  "918031124": ["promise"]
 };
