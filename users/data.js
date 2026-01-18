@@ -1,7 +1,7 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-18 21:19:50 UTC
+// Updated: 2026-01-18 21:20:49 UTC
 
 export const favorites = {
-  "918031124": ["grandmas-home", "pork-soda", "kid-cudi", "like-him"]
+  "918031124": ["grandmas-home", "pork-soda", "kid-cudi", "like-him", "resonanse-heavens-secret-requiem"]
 };
