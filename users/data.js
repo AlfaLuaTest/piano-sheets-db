@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-21 23:43:50 UTC
+// Updated: 2026-01-21 23:50:56 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -22,5 +22,6 @@ export const favorites = {
   "346292950": ["bella-ciao", "final-duet"],
   "716469918": ["aria-math", "silhouette", "birds-of-a-feather", "memoria-aira", "song-of-storms", "the-cruel-angels-thesis", "kill-bill", "im-still-standing", "super-mario-bros-theme", "hope-xxxtentacion", "no-surprises-radiohead"],
   "908083145": ["never-meant-to-belong", "megalovania", "i-love-abigail-but-she-dont-love-me-back", "oscillation-naktigonis", "greedy-tate-mcrae", "if-looks-could-kill", "miku", "creep", "seasons-wave-to-earth", "august-10", "notion", "strangers", "the-world-death-note-op"],
-  "555082251": ["its-been-so-long"]
+  "555082251": ["its-been-so-long"],
+  "924095686": ["five-nights-at-freddys-movie"]
 };
