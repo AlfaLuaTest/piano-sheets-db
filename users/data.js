@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-21 22:40:57 UTC
+// Updated: 2026-01-21 22:41:14 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -20,5 +20,5 @@ export const favorites = {
   "483121752": ["rush-e", "megalovania"],
   "647586060": ["school-rooftop"],
   "346292950": ["bella-ciao", "final-duet"],
-  "716469918": ["aria-math", "skyfall", "silhouette", "kings-and-queens", "birds-of-a-feather", "memoria-aira", "song-of-storms", "the-cruel-angels-thesis", "kill-bill", "im-still-standing", "nope-your-too-late-i-already-died"]
+  "716469918": ["aria-math", "skyfall", "silhouette", "birds-of-a-feather", "memoria-aira", "song-of-storms", "the-cruel-angels-thesis", "kill-bill", "im-still-standing", "nope-your-too-late-i-already-died"]
 };
