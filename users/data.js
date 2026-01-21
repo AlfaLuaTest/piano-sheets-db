@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-21 23:08:21 UTC
+// Updated: 2026-01-21 23:08:38 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -21,5 +21,5 @@ export const favorites = {
   "647586060": ["school-rooftop"],
   "346292950": ["bella-ciao", "final-duet"],
   "716469918": ["aria-math", "silhouette", "birds-of-a-feather", "memoria-aira", "song-of-storms", "the-cruel-angels-thesis", "kill-bill", "im-still-standing", "super-mario-bros-theme", "hope-xxxtentacion", "no-surprises-radiohead"],
-  "908083145": ["never-meant-to-belong", "megalovania", "i-love-abigail-but-she-dont-love-me-back", "oscillation-naktigonis", "greedy-tate-mcrae", "if-looks-could-kill", "miku", "creep", "seasons-wave-to-earth", "august-10", "notion", "polaroid-love", "strangers"]
+  "908083145": ["never-meant-to-belong", "megalovania", "i-love-abigail-but-she-dont-love-me-back", "oscillation-naktigonis", "greedy-tate-mcrae", "if-looks-could-kill", "miku", "creep", "seasons-wave-to-earth", "august-10", "notion", "polaroid-love", "strangers", "the-world-death-note-op"]
 };
