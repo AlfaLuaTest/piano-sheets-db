@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-21 04:36:56 UTC
+// Updated: 2026-01-21 04:36:59 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -10,5 +10,5 @@ export const favorites = {
   "691546047": ["pork-soda", "the-place-where-it-rained"],
   "347604851": ["hype-boy", "call-of-silence", "guren-no-yumiya", "red-swan", "akuma-no-ko", "shinzo-wo-sasageyo"],
   "845436524": ["stick-season", "song-of-storms", "resonanse-heavens-secret-requiem", "five-nights-at-freddys-movie", "passionfruit", "one"],
-  "708988738": ["all-girls-are-the-same"]
+  "708988738": []
 };
