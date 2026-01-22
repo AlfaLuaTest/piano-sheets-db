@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 03:33:08 UTC
+// Updated: 2026-01-22 03:44:53 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -26,5 +26,6 @@ export const favorites = {
   "924095686": ["five-nights-at-freddys-movie"],
   "898357634": ["chamber-of-reflection", "i-wanna-be-yours"],
   "827106398": ["fall-from-the-sky-pt-2"],
-  "862113733": ["all-girls-are-the-same", "the-world-death-note-op"]
+  "862113733": ["all-girls-are-the-same", "the-world-death-note-op"],
+  "3236387": ["kid-cudi"]
 };
