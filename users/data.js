@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 23:47:09 UTC
+// Updated: 2026-01-22 23:56:42 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -32,5 +32,5 @@ export const favorites = {
   "325166567": ["grandmas-home"],
   "96760961": ["hype-boy"],
   "865358404": ["no-surprises-radiohead", "i-love-abigail-but-she-dont-love-me-back", "kill-bill", "spring-the-four-seasons"],
-  "2629288": ["song-of-storms"]
+  "2629288": ["song-of-storms", "five-nights-at-freddys-movie"]
 };
