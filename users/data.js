@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 20:37:55 UTC
+// Updated: 2026-01-22 23:33:34 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -30,5 +30,6 @@ export const favorites = {
   "3236387": ["song-of-storms", "sad-song-we-the-kings", "pure-vessel", "no-surprises-radiohead", "great-fairy-fountain", "lost-woods", "bella-ciao", "debito-di-sonno", "unravel"],
   "153265370": ["pork-soda", "resonanse-heavens-secret-requiem"],
   "325166567": ["grandmas-home"],
-  "96760961": ["hype-boy"]
+  "96760961": ["hype-boy"],
+  "865358404": ["no-surprises-radiohead"]
 };
