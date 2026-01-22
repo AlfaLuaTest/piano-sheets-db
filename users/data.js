@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 00:14:40 UTC
+// Updated: 2026-01-22 00:16:12 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -24,5 +24,5 @@ export const favorites = {
   "908083145": ["never-meant-to-belong", "megalovania", "i-love-abigail-but-she-dont-love-me-back", "oscillation-naktigonis", "if-looks-could-kill", "miku", "creep", "august-10", "notion", "the-world-death-note-op", "house-of-memories", "i-have-nothing", "in-the-pool", "like-him"],
   "555082251": ["its-been-so-long"],
   "924095686": ["five-nights-at-freddys-movie"],
-  "898357634": ["chamber-of-reflection"]
+  "898357634": ["chamber-of-reflection", "i-wanna-be-yours"]
 };
