@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 20:20:12 UTC
+// Updated: 2026-01-22 20:37:55 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -29,5 +29,6 @@ export const favorites = {
   "862113733": ["all-girls-are-the-same", "the-world-death-note-op", "cigarettes-out-the-window", "resonanse-heavens-secret-requiem", "unravel", "i-love-abigail-but-she-dont-love-me-back", "great-fairy-fountain", "its-raining-somewhere-else", "bad-habit", "lost-woods", "red-swan", "never-meant-to-belong", "its-going-down-now", "otouto-mitai-na-sonzai"],
   "3236387": ["song-of-storms", "sad-song-we-the-kings", "pure-vessel", "no-surprises-radiohead", "great-fairy-fountain", "lost-woods", "bella-ciao", "debito-di-sonno", "unravel"],
   "153265370": ["pork-soda", "resonanse-heavens-secret-requiem"],
-  "325166567": ["grandmas-home"]
+  "325166567": ["grandmas-home"],
+  "96760961": ["hype-boy"]
 };
