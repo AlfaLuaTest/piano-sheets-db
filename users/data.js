@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 20:11:05 UTC
+// Updated: 2026-01-22 20:11:36 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -26,7 +26,7 @@ export const favorites = {
   "924095686": ["five-nights-at-freddys-movie"],
   "898357634": ["chamber-of-reflection", "i-wanna-be-yours"],
   "827106398": ["fall-from-the-sky-pt-2"],
-  "862113733": ["all-girls-are-the-same", "the-world-death-note-op", "cigarettes-out-the-window", "resonanse-heavens-secret-requiem", "unravel"],
+  "862113733": ["all-girls-are-the-same", "the-world-death-note-op", "cigarettes-out-the-window", "resonanse-heavens-secret-requiem", "unravel", "i-love-abigail-but-she-dont-love-me-back"],
   "3236387": ["song-of-storms", "sad-song-we-the-kings", "pure-vessel", "no-surprises-radiohead", "great-fairy-fountain", "lost-woods", "bella-ciao", "debito-di-sonno", "unravel"],
   "153265370": ["pork-soda", "resonanse-heavens-secret-requiem"],
   "325166567": ["grandmas-home"]
