@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-22 12:11:36 UTC
+// Updated: 2026-01-22 12:22:39 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -28,5 +28,5 @@ export const favorites = {
   "827106398": ["fall-from-the-sky-pt-2"],
   "862113733": ["all-girls-are-the-same", "the-world-death-note-op", "nintendo-64", "cigarettes-out-the-window", "i-love-abigail-but-she-dont-love-me-back", "kill-bill", "oscillation-naktigonis"],
   "3236387": ["song-of-storms", "sad-song-we-the-kings", "pure-vessel", "no-surprises-radiohead", "great-fairy-fountain", "lost-woods", "bella-ciao", "debito-di-sonno", "unravel"],
-  "153265370": ["pork-soda"]
+  "153265370": ["pork-soda", "resonanse-heavens-secret-requiem"]
 };
