@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-23 14:30:05 UTC
+// Updated: 2026-01-23 15:12:01 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -36,5 +36,6 @@ export const favorites = {
   "147008475": ["ready-or-not-c00lkidd", "creation-of-hatred", "famine", "grandmas-home"],
   "585801304": ["among-us-drip"],
   "650934596": ["runaway", "rush-e", "interstellar"],
-  "386500934": ["tek-it"]
+  "386500934": ["tek-it"],
+  "693562444": ["song-of-storms"]
 };
