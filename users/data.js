@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-23 20:52:50 UTC
+// Updated: 2026-01-23 20:56:20 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -41,5 +41,5 @@ export const favorites = {
   "985966541": ["just-monika", "love-story-indila", "see-you-again-tyler-the-creator", "bella-ciao", "the-spectre", "alone-marshmello", "its-going-down-now", "megalovania", "bubblegum-kk", "master-of-puppets", "all-star", "bumble-bee", "glimpse-of-us", "minecraft-sweden", "order-heaven-pierce-her", "symphony-no-5", "super-mario-bros-theme", "spear-of-justice", "interstellar", "cupid", "slow-dancing-in-the-dark", "creep", "horizon", "faded", "silhouette", "skyfall", "howls-moving-castle-theme", "fur-elise", "door", "clair-de-lune", "golden-hour", "let-her-go", "orange"],
   "590886039": ["todos-black-flash"],
   "785872121": ["bumble-bee", "ode-to-joy", "never-meant-to-belong", "summer-the-four-seasons", "stick-season", "river-flows-in-you"],
-  "886051397": ["rick-roll", "oops-did-it-again"]
+  "886051397": ["rick-roll", "oops-did-it-again", "thick-of-it"]
 };
