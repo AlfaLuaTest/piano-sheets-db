@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-24 20:46:52 UTC
+// Updated: 2026-01-24 22:01:14 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -46,5 +46,6 @@ export const favorites = {
   "346738910": ["love-story-indila", "lupang-hinirang", "impostor-syndrome", "song-of-storms", "grandmas-home", "his-theme", "interstellar"],
   "379523811": ["resonanse-heavens-secret-requiem"],
   "249704701": ["grandmas-home"],
-  "915471213": ["creation-of-hatred"]
+  "915471213": ["creation-of-hatred"],
+  "480372024": ["love-like-you"]
 };
