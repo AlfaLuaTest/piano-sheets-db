@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-24 23:41:57 UTC
+// Updated: 2026-01-25 00:26:00 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -31,7 +31,7 @@ export const favorites = {
   "153265370": ["pork-soda", "resonanse-heavens-secret-requiem"],
   "325166567": ["grandmas-home"],
   "96760961": ["if-i-am-with-you", "remember-me-from-coco", "my-way", "akaza-love-theme"],
-  "865358404": ["no-surprises-radiohead", "i-love-abigail-but-she-dont-love-me-back", "spring-the-four-seasons", "kill-bill", "chamber-of-reflection", "fluxxwave", "como-la-flor", "passionfruit"],
+  "865358404": ["no-surprises-radiohead", "i-love-abigail-but-she-dont-love-me-back", "spring-the-four-seasons", "kill-bill", "chamber-of-reflection", "fluxxwave", "como-la-flor"],
   "2629288": ["song-of-storms", "five-nights-at-freddys-movie", "runaway"],
   "147008475": ["ready-or-not-c00lkidd", "creation-of-hatred", "famine", "grandmas-home"],
   "585801304": ["among-us-drip"],
