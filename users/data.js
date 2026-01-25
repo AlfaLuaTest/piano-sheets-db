@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-25 00:44:58 UTC
+// Updated: 2026-01-25 02:55:16 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -47,5 +47,6 @@ export const favorites = {
   "379523811": ["resonanse-heavens-secret-requiem"],
   "249704701": ["grandmas-home"],
   "915471213": ["creation-of-hatred"],
-  "480372024": ["love-like-you", "another-love"]
+  "480372024": ["love-like-you", "another-love"],
+  "211970397": ["tpot-intro-theme"]
 };
