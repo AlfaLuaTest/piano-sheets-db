@@ -1,6 +1,6 @@
 // Auto-generated favorites list
 // Multi-user support - each user has their own favorites
-// Updated: 2026-01-25 20:57:08 UTC
+// Updated: 2026-01-25 20:59:54 UTC
 
 export const favorites = {
   "918031124": ["pork-soda", "another-love", "promise", "like-him", "stick-season"],
@@ -42,7 +42,7 @@ export const favorites = {
   "590886039": ["todos-black-flash"],
   "785872121": ["bumble-bee", "ode-to-joy", "never-meant-to-belong", "summer-the-four-seasons", "stick-season", "river-flows-in-you", "my-way", "my-love-mine-all-mine"],
   "886051397": ["thick-of-it", "rush-e", "another-love", "river-flows-in-you", "human-ragnbone-man", "robbery-juice-wrld", "stick-season"],
-  "536548320": ["all-my-fellas", "fluxxwave", "black-hole-sun", "among-us-drip", "hidden-in-the-sand", "megalovania", "if-i-am-with-you"],
+  "536548320": ["all-my-fellas", "fluxxwave", "black-hole-sun", "hidden-in-the-sand", "megalovania", "if-i-am-with-you"],
   "346738910": ["song-of-storms", "interstellar", "grandmas-home", "love-story-indila"],
   "379523811": ["resonanse-heavens-secret-requiem"],
   "249704701": ["grandmas-home"],
